@@ -1,0 +1,59 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skill or Luck?</title><style>
+    @page { size: letter; margin: 0.5in; }
+    body { font: 10.5px/1.42 -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; color:#0b0b0b;
+           max-width: 7.5in; margin: 0 auto; padding: 16px; background:#fff; }
+    h1 { font-size: 19px; margin: 0 0 2px; } h2 { font-size: 12.5px; margin: 12px 0 4px; color:#1c5cab; }
+    .sub { color:#52514e; margin: 0 0 8px; } p, ul { margin: 3px 0; } ul { padding-left: 17px; }
+    table { border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 10px; }
+    th, td { text-align: left; padding: 3px 6px; border-bottom: 1px solid #e6e5e1; vertical-align: top; }
+    th { color:#52514e; font-weight: 600; } td:nth-child(2), td:nth-child(4) { font-variant-numeric: tabular-nums; }
+    .box { background:#f4f8fe; border-left: 3px solid #2a78d6; padding: 6px 10px; margin: 6px 0; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .banner { background:#fff4e0; border:1px solid #eda100; padding:5px 8px; margin-bottom:8px; font-weight:600; }
+    .foot { color:#8a8984; font-size: 9px; margin-top: 10px; }
+    </style></head><body>
+<div class='banner'>DRY RUN ON SYNTHETIC DATA. These numbers are from simulated players to test the pipeline. Run <code>python run.py</code> to fill this page with real Statcast results.</div>
+<h1>Skill or Luck? Reading a player's numbers the right way</h1>
+<p class="sub">MLB Statcast, 2023–2026 regular seasons · every plate appearance, adjusted for park and opponent</p>
+
+<h2>The idea</h2>
+<p>Every stat line is <b>skill + context + luck</b>. Context is the park and the quality of the opponents. Luck is
+which balls found holes. Our model estimates all three at once and keeps only the skill. The smaller the sample, the
+more of a hot or cold start is luck, so the more we pull the number back toward average.</p>
+
+<h2>How long before you can trust a stat?</h2>
+<p>The number is the plate appearances (batters faced, for pitchers) at which a stat is <b>half skill, half luck</b>.
+Lower means it settles faster.</p>
+<table><tr><th>Stat</th><th>Hitters</th><th>After a full season</th><th>Pitchers</th><th>After a full season</th></tr>
+<tr><td>K%</td><td>65</td><td>Mostly skill after a full season</td><td>69</td><td>Mostly skill after a full season</td></tr><tr><td>BB%</td><td>140</td><td>Mostly skill after a full season</td><td>165</td><td>Mostly skill after a full season</td></tr><tr><td>xwOBA</td><td>107</td><td>Mostly skill after a full season</td><td>237</td><td>Part skill, part luck, even over a season</td></tr><tr><td>wOBA</td><td>194</td><td>Mostly skill after a full season</td><td>430</td><td>Part skill, part luck, even over a season</td></tr><tr><td>BABIP</td><td>931</td><td>Mostly luck in a single season</td><td>2932</td><td>Mostly luck in a single season</td></tr></table>
+
+<div class="box"><b>Rule of thumb:</b> Skill = average + (share that is skill) × (player − average), with
+share = PA ÷ (PA + the number in the table). <br>Example: Player 100517 hit
+.449 wOBA in 187 PA in 2026. Average is .313. Only about
+48% of his edge is likely skill, so his estimate is <b>.379</b>.</div>
+
+<div class="cols"><div>
+<h2>Did it work? Tested on the next season</h2>
+<p>We made estimates from one season and checked them against what players did the following year
+(2023→2024 through 2025→2026).</p>
+<ul>
+<li>Hitters' wOBA: <b>15% less error</b> than using last year's raw number.</li>
+<li>Pitchers' wOBA allowed: <b>20% less error</b>.</li>
+<li>On small samples (50–149 PA): hitters 29%, pitchers 30%.</li>
+<li>Strikeout rate: 6% (hitters), 9% (pitchers), smaller because K% is mostly skill to begin with.</li>
+</ul>
+<p>For hitters, this year's <b>contact-quality (xwOBA)</b> skill predicted next year's wOBA <b>better</b> than this year's wOBA skill did.</p>
+</div><div>
+<h2>2026 hitters likely to regress</h2>
+<p><b>Running hot</b> (results ahead of skill):</p><ul><li>Player 100126: .540 actual, .443 skill (278 PA)</li><li>Player 100649: .436 actual, .383 skill (272 PA)</li><li>Player 100918: .433 actual, .387 skill (348 PA)</li></ul>
+<p><b>Running cold</b> (better than their results):</p><ul><li>Player 100105: .192 actual, .239 skill (319 PA)</li><li>Player 100083: .226 actual, .266 skill (252 PA)</li><li>Player 100441: .222 actual, .260 skill (286 PA)</li></ul>
+</div></div>
+
+<h2>How to use this</h2>
+<ul><li><b>Strikeouts settle fastest</b>: about 65 PA for hitters and 69 batters faced for pitchers to be half skill. React to K% early.</li><li><b>Don't trust BABIP</b>, especially for pitchers: even a full season of hits on balls in play is mostly luck and defense.</li><li><b>Prefer contact quality (xwOBA) to results (wOBA)</b> for short stretches: it is half skill after ~107 PA versus ~194 for wOBA.</li><li>Always ask "how many PA?" A hitter's wOBA is not even half skill until about 194 PA; for pitchers it takes about 430.</li></ul>
+<p class="foot">Method: linear mixed model per stat and season with crossed random effects for hitter, pitcher, and park,
+plus a same-handed matchup adjustment; variances by REML; next-season test uses players with ≥50 trials in season one
+and ≥100 in season two, error weighted by season-two playing time. Defense, catcher framing, and aging are not modeled.</p>
+</body></html>
